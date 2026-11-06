@@ -16,7 +16,8 @@ public class DemoReflect {
 
     public static void main(String[] args) throws Exception{
         //1.先获取类实例
-        Class<DemoReflect> demoClass = DemoReflect.class;
+        Class<?> demoClass = Class.forName("com.minids.DemoReflect");
+//        Class<DemoReflect> demoClass = DemoReflect.class;
         System.out.println("该类名为" + demoClass);
 
         //2.获取方法
@@ -24,10 +25,12 @@ public class DemoReflect {
         System.out.println("该方法名为" + demoMethod);
 
         //3.根据类实例创建实例
-        DemoReflect demoReflect = demoClass.getDeclaredConstructor().newInstance();
-
+//        Object o = demoClass.newInstance();
+//        System.out.println(o);
+        DemoReflect demoReflect = (DemoReflect) demoClass.getDeclaredConstructor().newInstance();
+        System.out.println(demoReflect);
         //4.通过方法来进行反射
-        demoMethod.invoke(demoReflect);
+//        demoMethod.invoke(demoReflect);
 
     }
 
