@@ -3,13 +3,17 @@ package com.minids.annotation;
 import java.lang.annotation.*;
 
 /**
- * 定义注解：
- *  1.使用@interface关键字声明注解
- *  2.配置元注解（描述注解的注解）
- *      2.1 @Target 指定该注解可以放在哪个位置上
- *      2.2 @Retention 指定注解的保留策略 即这个注解保留到什么时候
- *  3.配置Documented 用于标注其他注解 让注解出现在生成的 javadoc 里
- *  4.定义注解的属性
+ * 数据源切换注解：标注在方法或类上，表示这段代码要走哪个数据源。
+ * <p>
+ * 语法要点：
+ *  1. 用 @interface 声明注解（本质是一个继承 Annotation 的接口）
+ *  2. 元注解（描述注解的注解）：
+ *     2.1 @Target      指定注解能标在哪些位置（此处：类/接口、方法）
+ *     2.2 @Retention   指定保留策略；必须是 RUNTIME，运行时反射才读得到，
+ *                      写成 SOURCE/CLASS 会导致 getAnnotation 恒返回 null
+ *     2.3 @Documented  让注解出现在 javadoc 里（仅影响文档，不影响运行）
+ *  3. 定义属性：String value() default "master";  属性名叫 value 时使用可简写 @DS("slave")
+ *     默认值 "master" 必须与配置文件里默认数据源的 key 一致
  */
 
 @Target({ElementType.TYPE,ElementType.METHOD})
