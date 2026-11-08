@@ -1,0 +1,14 @@
+mini:
+  ds:
+    primary: master          # 默认数据源，未标 @DS 时使用
+    datasource:
+      master:                 #主库
+        driver-class-name: org.h2.Driver
+        url: jdbc:h2:mem:master;MODE=MySQL
+        username: sa
+        password:
+      slave:                 #从库
+        driver-class-name: org.h2.Driver
+        url: jdbc:h2:mem:slave;MODE=MySQL
+        username: sa
+        password:
