@@ -1,0 +1,3 @@
+# mini-ds 自动配置清单：Spring Boot 启动时读取此文件，按条件注册其中的配置类
+# 文件名和路径是 Spring Boot 硬编码的，一个字母都不能改（Boot 3.x 规范，2.x 时代是 spring.factories）
+com.minids.config.DynamicDataSourceAutoConfiguration
