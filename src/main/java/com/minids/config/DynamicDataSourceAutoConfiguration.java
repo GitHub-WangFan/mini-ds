@@ -1,5 +1,6 @@
 package com.minids.config;
 
+import com.minids.aop.DSAspect;
 import com.minids.config.DataSourceProperties.DataSourceProperty;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
@@ -94,5 +95,25 @@ public class DynamicDataSourceAutoConfiguration {
                 .username(prop.getUsername())
                 .password(prop.getPassword())
                 .build();
+    }
+
+
+    /**
+     * 把切面注册成 Bean。
+     * <p>
+     * 为什么必须注册：@Aspect 只是"告诉 Spring 这是个切面"的标记，类本身还得进容器，
+     * 才会被 AOP 机制扫描到。不注册的话注解照样能编译，但运行时悄无声息地不生效。
+     * <p>
+     * 返回值类型写具体的 DSAspect 而不是 Object：
+     * @ConditionalOnMissingBean 是靠"方法的返回类型"来判断容器里有没有同类 Bean 的。
+     * <p>
+     * 不需要 @EnableAspectJAutoProxy：Boot 的 AopAutoConfiguration 会自动开启
+     * （前提是 pom 里有 spring-boot-starter-aop）。
+     * 但测试里 @SpringJUnitConfig 不加载 Boot 自动配置，所以 DSAspectTest 必须手动加。
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public DSAspect dsAspect(){
+        return new DSAspect();
     }
 }
