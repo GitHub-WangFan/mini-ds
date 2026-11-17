@@ -30,44 +30,44 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 必须在这个类里手动写 @EnableAspectJAutoProxy，否则切面根本不会被应用。
  */
 @SpringJUnitConfig(
-        classes = {DynamicDataSourceAutoConfiguration.class,DSAspectTest.TestConfig.class},
+        classes = {DynamicDataSourceAutoConfiguration.class, DSAspectTest.TestConfig.class},
         initializers = ConfigDataApplicationContextInitializer.class
 )
 public class DSAspectTest {
 
     /**
-     * 测试专用配置：注册一个假的业务类，并手动打开 AOP。
+     * 测试专用配置：注册两个假的业务类，并手动打开 AOP。
      * <p>
      * proxyTargetClass = true：
-     *   DemoService 没有实现任何接口，必须用 CGLIB 生成子类来做代理。
+     *   DemoService / ClassLevelService 都没有实现任何接口，必须用 CGLIB 生成子类来做代理。
      *   默认值是 false（走 JDK 动态代理，要求目标类有接口），这里不改就会失败。
      *   Spring Boot 在生产环境默认就是 true（spring.aop.proxy-target-class 默认开启）。
      */
     @Configuration
     @EnableAspectJAutoProxy(proxyTargetClass = true)
-    static class TestConfig{
+    static class TestConfig {
 
         @Bean
-        public DemoService demoService(){
+        public DemoService demoService() {
             return new DemoService();
         }
 
-
+        @Bean
+        public ClassLevelService classLevelService() {
+            return new ClassLevelService();
+        }
     }
 
     /**
-     * 模拟测试业务 模拟使用注解 与 不使用注解
-     * <p>
-     * 这个类不是业务代码，是"靶子"：一个方法标 @DS，一个不标，用来对比路由结果。
+     * 靶子一：方法级注解。
+     * 一个方法标 @DS，一个不标，用来对比路由结果。
      * 由 TestConfig 的 @Bean 创建，所以它 @Autowired 的字段能被 Spring 注入；
      * 又因为方法上匹配了切点，Spring 返回给调用方的是它的 CGLIB 代理对象。
      */
-    static class DemoService{
+    static class DemoService {
 
         @Autowired
         private DataSource dataSource;
-
-
 
         @DS("slave")
         public String withAnnotation() throws SQLException {
@@ -84,7 +84,38 @@ public class DSAspectTest {
          * 内部方法拿 connection 时读的仍是同一个线程的 ThreadLocal
          */
         private String getCurrentUrl() throws SQLException {
-            try (Connection conn = dataSource.getConnection()){
+            try (Connection conn = dataSource.getConnection()) {
+                return conn.getMetaData().getURL();
+            }
+        }
+    }
+
+    /**
+     * 靶子二：类级注解。
+     * 类上标 @DS("slave")，方法上什么都不标也应该走从库；
+     * methodOverride() 自己标了 @DS("master")，用来验证"方法级覆盖类级"。
+     * <p>
+     * 这两个能力靠切点里的 @within(com.minids.annotation.DS) 那一段提供。
+     */
+    @DS("slave")
+    static class ClassLevelService {
+
+        @Autowired
+        private DataSource dataSource;
+
+        /** 方法上没注解 → 继承类上的 slave */
+        public String classDefault() throws SQLException {
+            return getCurrentUrl();
+        }
+
+        /** 方法上有注解 → 覆盖类上的 slave，走 master */
+        @DS("master")
+        public String methodOverride() throws SQLException {
+            return getCurrentUrl();
+        }
+
+        private String getCurrentUrl() throws SQLException {
+            try (Connection conn = dataSource.getConnection()) {
                 return conn.getMetaData().getURL();
             }
         }
@@ -93,8 +124,14 @@ public class DSAspectTest {
     @Autowired
     private DemoService demoService;
 
+    @Autowired
+    private ClassLevelService classLevelService;
+
+    /**
+     * 方法级：@DS 标在方法上
+     */
     @Test
-    void shouldSwitchByAnnotation() throws SQLException {
+    void shouldSwitchByMethodAnnotation() throws SQLException {
 
         // 1. 标了 @DS("slave") → 切面把 key 设成 slave → 连到从库
         assertTrue(demoService.withAnnotation().contains("slave"));
@@ -104,6 +141,22 @@ public class DSAspectTest {
 
         // 3. 关键：方法执行完切面已经 clear，ThreadLocal 必须为空，
         //    否则复用这条线程的下一个请求会读到残留的 "slave"
+        assertNull(DataSourceContextHolder.get());
+    }
+
+    /**
+     * 类级：@DS 标在类上，靠切点的 @within 分支命中
+     */
+    @Test
+    void shouldSwitchByClassAnnotation() throws SQLException {
+
+        // 1. 类上标了 @DS("slave")，方法自己没标 → 走从库
+        assertTrue(classLevelService.classDefault().contains("slave"));
+
+        // 2. 方法上标了 @DS("master") → 覆盖类级的 slave，走主库
+        assertTrue(classLevelService.methodOverride().contains("master"));
+
+        // 3. 两条路径走完，ThreadLocal 同样必须干净
         assertNull(DataSourceContextHolder.get());
     }
 }
