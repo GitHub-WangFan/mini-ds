@@ -1,10 +1,10 @@
-package com.minids;
+package com.minids.demo;
 
 /**
  * ThreadLocal 反面实验：用共享的 static 变量存值。
  * <p>
  * 现象：线程 A 存值后 sleep 100ms，这期间线程 B 把同一个 static 变量覆盖了，
- * 于是线程 A 醒来取到的是"线程B的值"——这就是 YGMES 里 ShortConnUtil 的真实 bug。
+ * 于是线程 A 醒来取到的是"线程B的值"——这是项目里常见的真实 bug：用共享 static 变量存请求级数据（如共享 Connection）。
  * <p>
  * 对比实验：把下面 ThreadLocal 版本的代码放开、注释掉 static String 版本，
  * 再跑一次，两个线程各自取到自己的值（互不干扰）。

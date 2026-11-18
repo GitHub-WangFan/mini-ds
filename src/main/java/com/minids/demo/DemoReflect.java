@@ -1,4 +1,4 @@
-package com.minids;
+package com.minids.demo;
 
 import com.minids.annotation.DS;
 
